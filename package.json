@@ -1,0 +1,22 @@
+{
+  "name": "live-visit-tracker",
+  "version": "1.0.0",
+  "description": "Live Visit Tracker Web Application",
+  "main": "index.html",
+  "scripts": {
+    "start": "node network-server-8080.js",
+    "dev": "node network-server-8080.js",
+    "build": "echo 'Static build complete'",
+    "preview": "echo 'Preview build complete'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "devDependencies": {},
+  "keywords": ["live-visit-tracker", "web-app", "supabase", "google-sheets", "tracker"],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

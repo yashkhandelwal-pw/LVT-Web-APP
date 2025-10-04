@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Visit Tracker</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link rel="stylesheet" as="style" onload="this.rel='stylesheet'" href="https://fonts.googleapis.com/css2?display=swap&family=Public+Sans:wght@400;500;700;900&display=swap" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/app.js"></script>
+    <style>
+        .hidden { display: none; }
+        .form-label { font-weight: 500; color: #111418; margin-bottom: 8px; display: block; }
+        .form-input, .form-select, .form-textarea { 
+            width: 100%; 
+            min-height: 56px; 
+            border: 1px solid #dbe0e6; 
+            border-radius: 12px; 
+            padding: 15px; 
+            font-size: 16px; 
+            color: #111418; 
+            background-color: white; 
+        }
+        .form-input::placeholder, .form-textarea::placeholder { color: #60758a; }
+        .form-select { 
+            appearance: none; 
+            background-image: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(96,117,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e'); 
+            background-repeat: no-repeat; 
+            background-position: right 1rem center; 
+            background-size: 1.5em 1.5em; 
+        }
+        .message { text-align: center; padding: 15px; margin-top: 15px; border-radius: 8px; font-weight: 500;}
+        .error-message { color: #c53030; font-size: 0.875rem; margin-top: 0.25rem; }
+        .input-error { border-color: #c53030 !important; }
+        .success-message { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error-message-bg { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body class="bg-gray-50" style="font-family: 'Public Sans', sans-serif;">
+    <!-- Loader Overlay -->
+    <div id="loader" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+    </div>
+
+    <!-- Hidden canvas for image compression -->
+    <canvas id="image-canvas" class="hidden"></canvas>
+
+    <div class="max-w-md mx-auto bg-white min-h-screen">
+        <!-- Login View -->
+        <div id="login-view">
+            <div class="p-4">
+                <div class="flex items-center justify-end">
+                    <button class="text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+                            <path d="M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-center mt-4 mb-4">
+                    <img src="https://media.licdn.com/dms/image/v2/D5605AQGey5UpD9DIKg/feedshare-thumbnail_720_1280/B56ZVmf_pUHsA8-/0/1741181420574?e=2147483647&v=beta&t=1AB-nShu1DX3ZDSsVmEJAGgSjSGGe7AjseDMV1-D--o" 
+                         alt="PW Academy Logo" class="w-24 h-24 rounded-full object-cover">
+                </div>
+                <h1 class="text-2xl font-bold text-center mb-6">Live Visit Tracker</h1>
+                <div id="message-area-login" class="mb-4"></div>
+                <input type="email" id="email" placeholder="Enter your email ID" class="form-input mb-4">
+                <button onclick="fetchDetails()" class="w-full bg-blue-100 text-blue-800 font-bold py-3 px-4 rounded-full">
+                    Fetch Details
+                </button>
+            </div>
+        </div>
+
+        <!-- Form View -->
+        <div id="form-view" class="hidden">
+            <div class="p-4">
+                <div class="flex items-center">
+                    <button onclick="goBack()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+                            <path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"></path>
+                        </svg>
+                    </button>
+                    <h2 class="text-lg font-bold text-center flex-grow pr-6">Visit Details</h2>
+                </div>
+            </div>
+            
+            <form id="visit-form" class="p-4 space-y-6">
+                <!-- District filter container, hidden by default -->
+                <div id="district-filter-container" class="hidden">
+                    <label for="district" class="form-label">District</label>
+                    <select id="district" onchange="handleDistrictChange()" class="form-select"></select>
+                    <div id="district-error" class="error-message hidden"></div>
+                </div>
+                
+                <div>
+                    <label for="school-select-button" class="form-label">School Name</label>
+                    <div class="relative" id="school-dropdown-container">
+                        <button type="button" id="school-select-button" class="form-input text-left flex justify-between items-center w-full">
+                            <span id="school-selected-text" class="truncate text-gray-500">Select School</span>
+                            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 3a.75.75 0 01.53.22l3.5 3.5a.75.75 0 01-1.06 1.06L10 4.81 6.53 8.28a.75.75 0 01-1.06-1.06l3.5-3.5A.75.75 0 0110 3zm-3.72 9.28a.75.75 0 011.06 0L10 15.19l2.47-2.47a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <div id="school-options-panel" class="hidden absolute z-10 mt-1 w-full bg-white shadow-lg border rounded-md">
+                            <div class="p-2">
+                                <input type="text" id="school-search-input" placeholder="Search schools..." class="form-input !min-h-0 !py-2 !text-sm" autocomplete="off">
+                            </div>
+                            <div id="school-options-list" class="max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="school" name="school">
+                    <div id="school-select-button-error" class="error-message hidden"></div>
+                </div>
+                
+                <div>
+                    <label for="meeting-outcome" class="form-label">Meeting Outcome</label>
+                    <select id="meeting-outcome" class="form-select" onchange="toggleSkuSection()">
+                        <option value="">Select Outcome</option>
+                        <option>Initial Discussions (Relationship Building/Brochure Discussion/Gifting/Product Demonstration)</option>
+                        <option>Change of Book Identified in School, Awaiting Sampling</option>
+                        <option>Sample Submission - K_8</option>
+                        <option>Prescription Discussion/Finalization (Book List shared by School/Distributor)</option>
+                        <option>Book List Out</option>
+                        <option>After Sales Engagement</option>
+                        <option>Payment Collection</option>
+                        <option>Sample Submission Test Prep</option>
+                        <option>Meeting did not take place / Meeting postponed</option>
+                    </select>
+                    <div id="meeting-outcome-error" class="error-message hidden"></div>
+                </div>
+                
+                <div id="sku-section" class="hidden space-y-4 p-4 border border-gray-200 rounded-lg">
+                    <h3 class="font-bold text-center">Select SKUs</h3>
+                    <div id="sku-container" class="space-y-4"></div>
+                    <button type="button" onclick="addSkuBlock()" class="w-full bg-gray-100 text-gray-800 font-bold py-2 px-4 rounded-lg text-sm">
+                        Add More Categories
+                    </button>
+                    <div id="sku-container-error" class="error-message hidden"></div>
+                </div>
+                
+                <div>
+                    <label for="spoc" class="form-label">Meeting SPOC</label>
+                    <select id="spoc" onchange="toggleNewSpocFields()" class="form-select"></select>
+                    <div id="spoc-error" class="error-message hidden"></div>
+                </div>
+                
+                <div id="new-spoc-fields" class="hidden space-y-4 p-4 border border-gray-200 rounded-lg">
+                    <h3 class="font-bold text-center">Add New SPOC Details</h3>
+                    <div>
+                        <label for="new-spoc-designation" class="form-label">Designation</label>
+                        <select id="new-spoc-designation" class="form-select">
+                            <option value="">-- Select Designation --</option>
+                            <option>Teacher</option>
+                            <option>Principal</option>
+                            <option>coordinator</option>
+                            <option>Director</option>
+                            <option>Vice-Principal</option>
+                            <option>Librarian</option>
+                            <option>Admin Team</option>
+                        </select>
+                        <div id="new-spoc-designation-error" class="error-message hidden"></div>
+                    </div>
+                    <div>
+                        <label for="new-spoc-name" class="form-label">Name</label>
+                        <input type="text" id="new-spoc-name" placeholder="Enter Name" class="form-input">
+                        <div id="new-spoc-name-error" class="error-message hidden"></div>
+                    </div>
+                    <div>
+                        <label for="new-spoc-contact" class="form-label">Contact</label>
+                        <input type="tel" id="new-spoc-contact" placeholder="Enter 10-digit Contact" pattern="\d{10}" class="form-input">
+                        <div id="new-spoc-contact-error" class="error-message hidden"></div>
+                    </div>
+                    <div>
+                        <label for="new-spoc-email" class="form-label">Email</label>
+                        <input type="email" id="new-spoc-email" placeholder="Enter Email" class="form-input">
+                        <div id="new-spoc-email-error" class="error-message hidden"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="co-visitor1" class="form-label">Co-Visitor 1</label>
+                    <select id="co-visitor1" class="form-select"></select>
+                </div>
+                
+                <div>
+                    <label for="co-visitor2" class="form-label">Co-Visitor 2</label>
+                    <select id="co-visitor2" class="form-select"></select>
+                </div>
+                
+                <div>
+                    <label for="remarks" class="form-label">Remarks</label>
+                    <textarea id="remarks" placeholder="Enter Remarks" rows="4" class="form-textarea"></textarea>
+                </div>
+                
+                <div>
+                    <label for="follow-up-date" class="form-label">Follow-up Date & Time</label>
+                    <input type="datetime-local" id="follow-up-date" class="form-input">
+                </div>
+                
+                <div>
+                    <label class="form-label">Capture Image</label>
+                    <div id="image-capture-box" class="mt-2 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer">
+                        <img id="image-preview" class="hidden rounded-xl max-w-full h-auto mx-auto mb-4" alt="Image Preview"/>
+                        <div id="image-placeholder">
+                            <p class="text-gray-500">No Image Captured</p>
+                            <p class="text-sm text-gray-400">Tap to capture an image of the visit.</p>
+                        </div>
+                        <button type="button" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-full text-sm">
+                            Capture Image
+                        </button>
+                    </div>
+                    <input type="file" id="image-capture-input" accept="image/*" capture="environment" class="hidden">
+                    <div id="image-capture-box-error" class="error-message hidden"></div>
+                </div>
+                
+                <button type="button" onclick="submitForm()" class="w-full bg-blue-500 text-white font-bold py-4 px-4 rounded-full">
+                    Submit
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Configuration is loaded from js/config.js
+
+        // Global variables
+        let cachedData = null;
+        let locationCoords = { latitude: null, longitude: null };
+        let imageBase64 = null;
+        let currentSchoolDetails = { district: '', state: '' };
+        let submissionInProgress = false;
+
+        // Initialize when page loads
+        window.addEventListener('load', async function() {
+            console.log('Initializing Live Visit Tracker...');
+            await initializeSupabase();
+            setupEventListeners();
+        });
+
+        async function initializeSupabase() {
+            try {
+                // Wait for supabase client to be available
+                while (typeof window.supabaseClient === 'undefined') {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                console.log('Supabase client available globally');
+                console.log('Supabase client.supabase available:', !!window.supabaseClient?.supabase);
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+            }
+        }
+
+        function setupEventListeners() {
+            // Image capture event listeners are handled in js/app.js
+
+            // School dropdown
+            const schoolDropdownContainer = document.getElementById('school-dropdown-container');
+            const schoolSelectButton = document.getElementById('school-select-button');
+            const schoolOptionsPanel = document.getElementById('school-options-panel');
+            const schoolSearchInput = document.getElementById('school-search-input');
+            
+            schoolSelectButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                console.log('School dropdown clicked');
+                
+                // Always show the panel when button is clicked
+                console.log('Opening school dropdown');
+                schoolOptionsPanel.classList.remove('hidden');
+                schoolSearchInput.value = '';
+                renderSchoolOptions();
+                setTimeout(() => schoolSearchInput.focus(), 100);
+            });
+            
+            schoolSearchInput.addEventListener('input', () => {
+                renderSchoolOptions(schoolSearchInput.value.toLowerCase());
+            });
+            
+            // Close dropdown when clicking outside or on the button again
+            document.addEventListener('click', (e) => {
+                if (!schoolDropdownContainer.contains(e.target)) {
+                    console.log('Closing dropdown - clicked outside');
+                    schoolOptionsPanel.classList.add('hidden');
+                }
+            });
+            
+            // Add escape key to close dropdown
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !schoolOptionsPanel.classList.contains('hidden')) {
+                    console.log('Closing dropdown - escape key pressed');
+                    schoolOptionsPanel.classList.add('hidden');
+                }
+            });
+        }
+
+        // Image compression
+        function compressImage(file) {
+            console.log('compressImage called with file:', file ? file.name : 'no file');
+            const MAX_WIDTH = window.CONFIG?.IMAGE_COMPRESSION?.MAX_WIDTH || 1024;
+            const MAX_HEIGHT = window.CONFIG?.IMAGE_COMPRESSION?.MAX_HEIGHT || 1024;
+            const QUALITY = window.CONFIG?.IMAGE_COMPRESSION?.QUALITY || 0.7;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Calculate new dimensions while maintaining aspect ratio
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    const canvas = document.getElementById('image-canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    imageBase64 = canvas.toDataURL('image/jpeg', QUALITY);
+                    
+                    // Sync with the LiveVisitTracker instance
+                    if (window.liveVisitTracker) {
+                        window.liveVisitTracker.imageBase64 = imageBase64;
+                        console.log('Image synced to LiveVisitTracker:', imageBase64 ? 'Yes' : 'No');
+                    } else {
+                        console.log('LiveVisitTracker not available for image sync');
+                    }
+
+                    // Update the UI
+                    document.getElementById('image-preview').src = imageBase64;
+                    document.getElementById('image-preview').classList.remove('hidden');
+                    document.getElementById('image-placeholder').classList.add('hidden');
+                    clearAllErrorMessages();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // UI Helper Functions
+        function showLoader() {
+            document.getElementById('loader').classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').classList.add('hidden');
+        }
+
+        function showMessage(text, type, view = 'login') {
+            const msgArea = document.getElementById(`message-area-${view}`);
+            msgArea.innerHTML = `<div class="message ${type === 'error' ? 'error-message-bg' : 'success-message'}">${text}</div>`;
+        }
+
+        function clearMessages() {
+            document.getElementById('message-area-login').innerHTML = '';
+        }
+
+        function goBack() {
+            document.getElementById('form-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('visit-form').reset();
+            clearAllErrorMessages();
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('image-placeholder').classList.remove('hidden');
+            document.getElementById('new-spoc-fields').classList.add('hidden');
+            document.getElementById('sku-section').classList.add('hidden');
+            document.getElementById('sku-container').innerHTML = '';
+            document.getElementById('school-selected-text').textContent = 'Select School';
+            document.getElementById('school-selected-text').classList.add('text-gray-500');
+            document.getElementById('school').value = '';
+            document.getElementById('school-options-panel').classList.add('hidden');
+            document.getElementById('district-filter-container').classList.add('hidden');
+            imageBase64 = null;
+            currentSchoolDetails = { district: '', state: '' };
+        }
+
+        // Data Fetching
+        async function fetchDetails() {
+            console.log('fetchDetails called');
+            clearMessages();
+            const email = document.getElementById('email').value.trim().toLowerCase();
+            console.log('Email entered:', email);
+            
+            if (!email) {
+                showMessage('Please enter your email address.', 'error', 'login');
+                return;
+            }
+
+            if (!email.endsWith(CONFIG.COMPANY_EMAIL_DOMAIN)) {
+                showMessage(`Please use a valid ${CONFIG.COMPANY_EMAIL_DOMAIN} email.`, 'error', 'login');
+                return;
+            }
+
+            console.log('Email validation passed, showing loader');
+            showLoader();
+            
+            try {
+                console.log('Getting location...');
+                await getAndSetLocation();
+                console.log('Getting initial data...');
+                const data = await getInitialData(email);
+                console.log('Data received:', data);
+                onDataFetched(data);
+            } catch (error) {
+                console.error('Error in fetchDetails:', error);
+                hideLoader();
+                showMessage('Error: ' + error.message, 'error', 'login');
+            }
+        }
+
+        async function getAndSetLocation() {
+            return new Promise((resolve, reject) => {
+                if (navigator.geolocation) {
+                    console.log('Requesting location permission...');
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            locationCoords.latitude = position.coords.latitude;
+                            locationCoords.longitude = position.coords.longitude;
+                            console.log('Location captured:', locationCoords);
+                            resolve();
+                        },
+                        (error) => {
+                            console.warn('Location access denied or failed:', error.message);
+                            console.log('Continuing without location data');
+                            resolve(); // Continue without location
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 300000
+                        }
+                    );
+                } else {
+                    console.warn('Geolocation not supported, continuing without location');
+                    resolve(); // Continue without location
+                }
+            });
+        }
+
+        async function getInitialData(email) {
+            try {
+                console.log('Fetching data for:', email);
+                
+                // Check if employee exists and get RM/ZM data
+                const employee = await window.supabaseClient.getEmployeeByEmail(email);
+                if (!employee) {
+                    throw new Error('Email not found. Please contact administrator.');
+                }
+
+                // Get schools for this employee
+                if (!window.supabaseClient.supabase) {
+                    await window.supabaseClient.initialize();
+                }
+                const { data: schoolsData, error: schoolsError } = await window.supabaseClient.supabase
+                    .from('lvt_universe_data')
+                    .select('*')
+                    .eq('employee_email', email)
+                    .eq('status', 'Active');
+                
+                if (schoolsError) throw schoolsError;
+
+                // Transform data
+                const schools = schoolsData.map(row => ({
+                    id: row.employee_email + '_' + row.school_name,
+                    name: row.school_name,
+                    district: row.district,
+                    state: '',
+                    spocs: buildSpocsFromRow(row)
+                }));
+
+                // Get SKU data
+                const skuData = {
+                    'Test Prep': ['Physics Test Prep', 'Chemistry Test Prep', 'Mathematics Test Prep', 'Biology Test Prep'],
+                    'K-8': ['Science K-8', 'Mathematics K-8', 'English K-8', 'Social Studies K-8'],
+                    'Competitive': ['JEE Main', 'JEE Advanced', 'NEET', 'UPSC']
+                };
+
+                // Get co-visitors data
+                const coVisitors = await window.supabaseClient.getCoVisitors(email);
+
+                const dataToReturn = {
+                    isManager: false,
+                    rmEmail: employee.rm_email || '',
+                    zmEmail: employee.zm_email || '',
+                    coVisitors: coVisitors,
+                    skuData: skuData,
+                    userEmail: email,
+                    schools: schools
+                };
+
+                cachedData = dataToReturn;
+                return dataToReturn;
+
+            } catch (error) {
+                console.error('Error fetching initial data:', error);
+                throw error;
+            }
+        }
+
+        function buildSpocsFromRow(row) {
+            const spocs = [];
+            
+            if (row.spoc1_name) {
+                spocs.push({
+                    name: row.spoc1_name,
+                    designation: row.spoc1_designation || '',
+                    phone: row.spoc1_phone_number || '',
+                    email: row.spoc1_email || ''
+                });
+            }
+            
+            if (row.spoc2_name) {
+                spocs.push({
+                    name: row.spoc2_name,
+                    designation: row.spoc2_designation || '',
+                    phone: row.spoc2_phone_number || '',
+                    email: row.spoc2_email || ''
+                });
+            }
+            
+            return spocs;
+        }
+
+        function onDataFetched(data) {
+            console.log('onDataFetched called with:', data);
+            hideLoader();
+            if (data.error) {
+                console.log('Data has error:', data.error);
+                showMessage(data.error, 'error', 'login');
+                return;
+            }
+
+            console.log('Data is valid, populating form...');
+            
+            // Set cached data first
+            cachedData = data;
+            console.log('Cached data set:', cachedData);
+            
+            // Populate co-visitors
+            console.log('Populating co-visitors with data:', data.coVisitors);
+            populateDropdown('co-visitor1', data.coVisitors, 'No Co-Visitor 1');
+            populateDropdown('co-visitor2', data.coVisitors, 'No Co-Visitor 2');
+            console.log('Co-visitors populated');
+            
+            // Show schools
+            console.log('Schools data:', data.schools);
+            renderSchoolOptions();
+            
+            console.log('Switching to form view...');
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('form-view').classList.remove('hidden');
+            console.log('Form view should now be visible');
+        }
+
+        function populateDropdown(elementId, options, defaultOption) {
+            console.log(`Populating dropdown ${elementId} with ${options.length} options`);
+            const select = document.getElementById(elementId);
+            if (!select) {
+                console.error(`Element ${elementId} not found`);
+                return;
+            }
+            
+            select.innerHTML = `<option value="">${defaultOption}</option>`;
+            options.forEach((option, index) => {
+                const opt = document.createElement('option');
+                if (typeof option === 'string') {
+                    // Simple string options
+                    opt.value = option;
+                    opt.textContent = option;
+                } else if (option && option.name) {
+                    // Object with name property
+                    opt.value = option.email || option.name;
+                    opt.textContent = option.name;
+                } else {
+                    // Fallback
+                    opt.value = option;
+                    opt.textContent = option;
+                }
+                select.appendChild(opt);
+                console.log(`Added option ${index + 1}: ${opt.textContent} (${opt.value})`);
+            });
+            console.log(`Dropdown ${elementId} populated with ${options.length} options`);
+        }
+
+        function renderSchoolOptions(filter = '') {
+            const optionsList = document.getElementById('school-options-list');
+            optionsList.innerHTML = '';
+            
+            console.log('renderSchoolOptions called with filter:', filter);
+            console.log('cachedData:', cachedData);
+            console.log('cachedData.schools:', cachedData?.schools);
+            
+            if (!cachedData || !cachedData.schools) {
+                console.log('No cached data or schools available');
+                return;
+            }
+            
+            const filtered = cachedData.schools.filter(school => 
+                school.name.toLowerCase().includes(filter)
+            );
+            
+            if (filtered.length > 0) {
+                console.log(`Rendering ${filtered.length} schools`);
+                filtered.sort((a, b) => a.name.localeCompare(b.name)).forEach((school, index) => {
+                    const option = document.createElement('div');
+                    option.textContent = school.name;
+                    option.className = 'p-3 text-sm hover:bg-blue-50 cursor-pointer truncate';
+                    option.onclick = () => selectSchool(school);
+                    optionsList.appendChild(option);
+                    if (index < 5) { // Log first 5 schools
+                        console.log(`Added school ${index + 1}: ${school.name}`);
+                    }
+                });
+                console.log(`Total schools rendered: ${filtered.length}`);
+            } else {
+                console.log('No schools found after filtering');
+                optionsList.innerHTML = '<div class="p-3 text-sm text-gray-500">No schools found</div>';
+            }
+        }
+
+        function selectSchool(schoolObject) {
+            console.log('School selected:', schoolObject.name);
+            document.getElementById('school').value = schoolObject.name;
+            const selectedText = document.getElementById('school-selected-text');
+            selectedText.textContent = schoolObject.name;
+            selectedText.classList.remove('text-gray-500');
+            document.getElementById('school-options-panel').classList.add('hidden');
+            console.log('School dropdown closed after selection');
+            
+            currentSchoolDetails = { 
+                district: schoolObject.district, 
+                state: schoolObject.state 
+            };
+            
+            populateSpocOptions(schoolObject.spocs || []);
+        }
+
+        function populateSpocOptions(spocs) {
+            const spocSelect = document.getElementById('spoc');
+            spocSelect.innerHTML = '<option value="">Select SPOC</option>';
+            
+            spocs.forEach(spoc => {
+                const opt = document.createElement('option');
+                opt.value = JSON.stringify(spoc);
+                opt.textContent = `${spoc.name} (${spoc.designation})`;
+                spocSelect.appendChild(opt);
+            });
+            
+            spocSelect.innerHTML += '<option value="AddNewSpoc">Add New SPOC</option>';
+        }
+
+        // Form functionality
+        function toggleNewSpocFields() {
+            const spocSelection = document.getElementById('spoc').value;
+            document.getElementById('new-spoc-fields').classList.toggle('hidden', spocSelection !== 'AddNewSpoc');
+        }
+
+        function toggleSkuSection() {
+            const outcome = document.getElementById('meeting-outcome').value;
+            const skuSection = document.getElementById('sku-section');
+            const skuContainer = document.getElementById('sku-container');
+            
+            if (outcome === 'Sample Submission Test Prep') {
+                skuSection.classList.remove('hidden');
+                if (skuContainer.innerHTML.trim() === '') {
+                    addSkuBlock();
+                }
+            } else {
+                skuSection.classList.add('hidden');
+                skuContainer.innerHTML = '';
+            }
+        }
+
+        function addSkuBlock() {
+            const skuContainer = document.getElementById('sku-container');
+            const blockId = 'sku-block-' + Date.now();
+            const block = document.createElement('div');
+            block.id = blockId;
+            block.className = 'space-y-2 p-3 border border-gray-100 rounded-md';
+            
+            const categorySelect = document.createElement('select');
+            categorySelect.className = 'form-select';
+            categorySelect.onchange = () => populateSkusForCategory(blockId, categorySelect.value);
+            
+            let optionsHtml = '<option value="">-- Select Category --</option>';
+            const categories = Object.keys(cachedData.skuData).sort();
+            categories.forEach(cat => {
+                optionsHtml += `<option value="${cat}">${cat}</option>`;
+            });
+            categorySelect.innerHTML = optionsHtml;
+            
+            const skuListDiv = document.createElement('div');
+            skuListDiv.className = 'space-y-2 max-h-40 overflow-y-auto p-2';
+            
+            block.appendChild(categorySelect);
+            block.appendChild(skuListDiv);
+            skuContainer.appendChild(block);
+        }
+
+        function populateSkusForCategory(blockId, category) {
+            const block = document.getElementById(blockId);
+            const skuListDiv = block.querySelector('div');
+            skuListDiv.innerHTML = '';
+            
+            if (category && cachedData.skuData[category]) {
+                cachedData.skuData[category].forEach(skuName => {
+                    const checkboxId = 'sku-' + skuName.replace(/\s+/g, '-') + '-' + Date.now();
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'flex items-center';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = checkboxId;
+                    checkbox.value = skuName;
+                    checkbox.className = 'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500';
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = checkboxId;
+                    label.textContent = skuName;
+                    label.className = 'ml-3 block text-sm text-gray-700';
+                    
+                    itemDiv.appendChild(checkbox);
+                    itemDiv.appendChild(label);
+                    skuListDiv.appendChild(itemDiv);
+                });
+            }
+        }
+
+        // Validation and submission
+        function clearAllErrorMessages() {
+            document.querySelectorAll('.error-message').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+        }
+
+        function setError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            if (field) field.classList.add('input-error');
+            const errorDiv = document.getElementById(`${fieldId}-error`);
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        async function submitForm() {
+            clearAllErrorMessages();
+            let isValid = true;
+            let firstInvalidElement = null;
+
+            const validateField = (fieldId, condition, message) => {
+                if (condition) {
+                    setError(fieldId, message);
+                    isValid = false;
+                    if (!firstInvalidElement) {
+                        firstInvalidElement = document.getElementById(fieldId);
+                    }
+                }
+            };
+
+            // Validation
+            validateField('school-select-button', !document.getElementById('school').value, 'Please select a school.');
+            
+            const meetingOutcome = document.getElementById('meeting-outcome').value;
+            validateField('meeting-outcome', !meetingOutcome, 'Please select a meeting outcome.');
+            validateField('spoc', !document.getElementById('spoc').value, 'Please select or add a SPOC.');
+            validateField('image-capture-box', !imageBase64, 'Please capture an image.');
+            
+            let selectedSkus = '';
+            if (meetingOutcome === 'Sample Submission Test Prep') {
+                const checkedSkus = document.querySelectorAll('#sku-container input[type="checkbox"]:checked');
+                validateField('sku-container', checkedSkus.length === 0, 'Please select at least one SKU.');
+                selectedSkus = Array.from(checkedSkus).map(cb => cb.value).join(' // ');
+            }
+            
+            const spocSelection = document.getElementById('spoc').value;
+            if (spocSelection === 'AddNewSpoc') {
+                validateField('new-spoc-designation', !document.getElementById('new-spoc-designation').value, 'Designation is required.');
+                validateField('new-spoc-name', !document.getElementById('new-spoc-name').value, 'Name is required.');
+                validateField('new-spoc-contact', !/^\d{10}$/.test(document.getElementById('new-spoc-contact').value), 'Contact must be 10 digits.');
+                const newSpocEmail = document.getElementById('new-spoc-email').value;
+                validateField('new-spoc-email', newSpocEmail && !newSpocEmail.includes('@'), 'Please enter a valid email.');
+            }
+
+            if (!isValid) {
+                if (firstInvalidElement) {
+                    firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
+
+            // Prepare form data
+            const formData = {
+                submissionId: 'sub-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                userEmail: cachedData.userEmail,
+                rmEmail: cachedData.rmEmail || '',
+                zmEmail: cachedData.zmEmail || '',
+                state: currentSchoolDetails.state,
+                district: currentSchoolDetails.district,
+                latitude: locationCoords.latitude,
+                longitude: locationCoords.longitude,
+                school: document.getElementById('school').value,
+                meetingOutcome: meetingOutcome,
+                selectedSkus: selectedSkus,
+                spocSelection: spocSelection,
+                newSpocDesignation: document.getElementById('new-spoc-designation').value,
+                newSpocName: document.getElementById('new-spoc-name').value,
+                newSpocContact: document.getElementById('new-spoc-contact').value,
+                newSpocEmail: document.getElementById('new-spoc-email').value,
+                coVisitor1: document.getElementById('co-visitor1').value,
+                coVisitor2: document.getElementById('co-visitor2').value,
+                remarks: document.getElementById('remarks').value,
+                imageBase64: imageBase64,
+                followUpDate: document.getElementById('follow-up-date').value
+            };
+
+            showLoader();
+            submissionInProgress = true;
+            
+            try {
+                await processSubmission(formData);
+            } catch (error) {
+                hideLoader();
+                showMessage('Submission failed: ' + error.message, 'error', 'login');
+            }
+        }
+
+        async function processSubmission(formData) {
+            try {
+                console.log('Processing submission:', formData);
+                
+                // Process SPOC data
+                let spocData = {};
+                if (formData.spocSelection === 'AddNewSpoc') {
+                    spocData = {
+                        type: 'Add New Spoc',
+                        designation: formData.newSpocDesignation,
+                        name: formData.newSpocName,
+                        phone: formData.newSpocContact,
+                        email: formData.newSpocEmail
+                    };
+                } else {
+                    const selectedSpoc = JSON.parse(formData.spocSelection);
+                    spocData = {
+                        type: '',
+                        designation: selectedSpoc.designation,
+                        name: selectedSpoc.name,
+                        phone: selectedSpoc.phone,
+                        email: selectedSpoc.email
+                    };
+                }
+
+                // Get location address
+                let locationAddress = 'Address not found';
+                if (formData.latitude && formData.longitude) {
+                    try {
+                        locationAddress = await reverseGeocode(formData.latitude, formData.longitude);
+                    } catch (error) {
+                        locationAddress = "Could not reverse geocode";
+                    }
+                }
+
+                // Prepare visit data for Google Sheets submission
+                const visitData = {
+                    submissionId: formData.submissionId,
+                    userEmail: formData.userEmail,
+                    rmEmail: formData.rmEmail,
+                    zmEmail: formData.zmEmail,
+                    state: formData.state,
+                    district: formData.district,
+                    school: formData.school,
+                    meetingOutcome: formData.meetingOutcome,
+                    selectedSkus: formData.selectedSkus,
+                    spocType: spocData.type,
+                    spocDesignation: spocData.designation,
+                    spocName: spocData.name,
+                    spocPhone: spocData.phone,
+                    spocEmail: spocData.email,
+                    coVisitor1: formData.coVisitor1,
+                    coVisitor2: formData.coVisitor2,
+                    remarks: formData.remarks,
+                    location: {
+                        latitude: formData.latitude,
+                        longitude: formData.longitude,
+                        address: locationAddress
+                    },
+                    followUpDate: formData.followUpDate
+                };
+
+                console.log('Visit data prepared for submission:', visitData);
+
+                // Convert base64 image to blob for Drive upload
+                let imageBlob = null;
+                if (formData.imageBase64) {
+                    try {
+                        imageBlob = await base64ToBlob(formData.imageBase64);
+                        console.log('Image converted to blob for upload');
+                    } catch (error) {
+                        console.error('Error converting image to blob:', error);
+                    }
+                }
+
+                // Submit to Google Sheets and Drive
+                try {
+                    const result = await googleSheetsService.completeSubmission(visitData, imageBlob);
+                    console.log('Submission successful:', result);
+                    
+                    hideLoader();
+                    goBack();
+                    showMessage("Visit logged successfully! Data submitted to Google Sheets and image uploaded to Drive.", 'success', 'login');
+                } catch (error) {
+                    console.error('Google Sheets/Drive submission error:', error);
+                    throw error;
+                }
+
+            } catch (error) {
+                console.error('Submission Error:', error);
+                throw error;
+            }
+        }
+
+        async function reverseGeocode(latitude, longitude) {
+            try {
+                // Use Google Maps API for reverse geocoding
+                const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${CONFIG.GOOGLE.API_KEY}`);
+                const data = await response.json();
+                
+                if (data.results && data.results[0]) {
+                    return data.results[0].formatted_address;
+                } else {
+                    return `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`;
+                }
+            } catch (error) {
+                console.error('Reverse geocoding failed:', error);
+                return `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`;
+            }
+        }
+
+        // Convert base64 image to blob for Drive upload
+        async function base64ToBlob(base64Data) {
+            try {
+                // Remove data URL prefix if present
+                const base64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
+                
+                // Convert base64 to binary
+                const byteCharacters = atob(base64);
+                const byteNumbers = new Array(byteCharacters.length);
+                
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                
+                const byteArray = new Uint8Array(byteNumbers);
+                return new Blob([byteArray], { type: 'image/jpeg' });
+            } catch (error) {
+                console.error('Error converting base64 to blob:', error);
+                throw error;
+            }
+        }
+
+        // Fetch details for the entered email
+        async function fetchDetails() {
+            const email = document.getElementById('email').value.trim();
+            
+            if (!email) {
+                showMessage('Please enter your email ID', 'error', 'login');
+                return;
+            }
+            
+            if (!email.includes('@')) {
+                showMessage('Please enter a valid email address', 'error', 'login');
+                return;
+            }
+            
+            showLoader();
+            
+            try {
+                console.log('Fetching details for:', email);
+                
+                // Get location first
+                await getAndSetLocation();
+                
+                // Get initial data
+                const data = await getInitialData(email);
+                
+                // Process the data
+                onDataFetched(data);
+                
+            } catch (error) {
+                console.error('Error in fetchDetails:', error);
+                hideLoader();
+                showMessage('Error: ' + error.message, 'error', 'login');
+            }
+        }
+
+        // Global functions for HTML onclick handlers
+        window.fetchDetails = fetchDetails;
+        window.goBack = goBack;
+        window.handleDistrictChange = function() {
+            // Not implemented in this version - all users see schools directly
+        };
+        window.toggleNewSpocFields = toggleNewSpocFields;
+        window.toggleSkuSection = toggleSkuSection;
+        window.addSkuBlock = addSkuBlock;
+        window.submitForm = submitForm;
+        window.compressImage = compressImage;
+    </script>
+</body>
+</html>

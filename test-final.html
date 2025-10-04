@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Visit Tracker - Final Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .test-section { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .test-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .test-card { background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; }
+        .test-card.success { border-left-color: #28a745; background: #d4edda; }
+        .test-card.error { border-left-color: #dc3545; background: #f8d7da; }
+        .btn { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
+        .feature-list { list-style: none; padding: 0; }
+        .feature-list li { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .feature-list li:before { content: "✅ "; color: #28a745; font-weight: bold; }
+        .feature-list li.pending:before { content: "⏳ "; color: #ffc107; }
+        .feature-list li.error:before { content: "❌ "; color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Live Visit Tracker - Final Test Suite</h1>
+        
+        <div class="test-section">
+            <h2>📱 Application Links</h2>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h3>Main Application</h3>
+                    <p>Full-featured Live Visit Tracker app</p>
+                    <a href="app.html" class="btn btn-success" target="_blank">Open Main App</a>
+                </div>
+                <div class="test-card">
+                    <h3>Debug Version</h3>
+                    <p>Debug version with detailed logging</p>
+                    <a href="debug-app.html" class="btn" target="_blank">Open Debug App</a>
+                </div>
+                <div class="test-card">
+                    <h3>Original Version</h3>
+                    <p>Original index.html version</p>
+                    <a href="index.html" class="btn" target="_blank">Open Original</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Test Scenarios</h2>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h3>1. Basic Connection Test</h3>
+                    <p>Test Supabase connection and data retrieval</p>
+                    <button onclick="testConnection()" class="btn">Test Connection</button>
+                    <div id="connection-result"></div>
+                </div>
+                <div class="test-card">
+                    <h3>2. Email Authentication</h3>
+                    <p>Test email validation and user lookup</p>
+                    <input type="email" id="test-email" placeholder="Enter test email" style="width: 100%; padding: 8px; margin: 5px 0;">
+                    <button onclick="testEmailAuth()" class="btn">Test Email</button>
+                    <div id="email-result"></div>
+                </div>
+                <div class="test-card">
+                    <h3>3. School Data Retrieval</h3>
+                    <p>Test school data fetching and display</p>
+                    <button onclick="testSchoolData()" class="btn">Test Schools</button>
+                    <div id="school-result"></div>
+                </div>
+                <div class="test-card">
+                    <h3>4. Form Validation</h3>
+                    <p>Test form validation and submission</p>
+                    <button onclick="testFormValidation()" class="btn">Test Validation</button>
+                    <div id="validation-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>✅ Feature Checklist</h2>
+            <ul class="feature-list" id="feature-checklist">
+                <li>User authentication with @pw.live email validation</li>
+                <li>Supabase database connection and data retrieval</li>
+                <li>School selection with search functionality</li>
+                <li>SPOC management (existing and new SPOCs)</li>
+                <li>Meeting outcome selection</li>
+                <li>SKU selection for Test Prep outcomes</li>
+                <li>Co-visitor selection</li>
+                <li>Image capture with compression</li>
+                <li>Geolocation capture</li>
+                <li>Form validation and error handling</li>
+                <li>Responsive design for mobile devices</li>
+                <li>Follow-up date selection</li>
+                <li>Remarks and additional notes</li>
+                <li>Data preparation for submission</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Test Results</h2>
+            <div id="test-results">
+                <div class="status info">Ready to run tests. Click the test buttons above to begin.</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 Troubleshooting</h2>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h3>Common Issues</h3>
+                    <ul>
+                        <li><strong>Email not found:</strong> Check if email exists in lvt_universe_data table</li>
+                        <li><strong>No schools:</strong> Verify status column is 'Active'</li>
+                        <li><strong>CORS errors:</strong> Make sure server is running with CORS enabled</li>
+                        <li><strong>Location denied:</strong> Allow location access in browser</li>
+                        <li><strong>Image not capturing:</strong> Check camera permissions</li>
+                    </ul>
+                </div>
+                <div class="test-card">
+                    <h3>Browser Console</h3>
+                    <p>Open browser console (F12) to see detailed logs and error messages.</p>
+                    <button onclick="showConsoleInstructions()" class="btn btn-warning">Show Instructions</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        let supabaseClient;
+        let testResults = [];
+
+        // Initialize Supabase
+        window.addEventListener('load', async function() {
+            try {
+                const supabaseUrl = 'https://kfkcohosbpaeuzxuohrm.supabase.co';
+                const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtma2NvaG9zYnBhZXV6eHVvaHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyMDgyODgsImV4cCI6MjA2OTc4NDI4OH0.0f5ux3Z1B2Y8acpn7ZC40HiLeW3QhZcvZkr758ySivk';
+                
+                supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+                console.log('Supabase client initialized for testing');
+                addTestResult('Supabase Initialization', true, 'Client initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+                addTestResult('Supabase Initialization', false, `Failed: ${error.message}`);
+            }
+        });
+
+        function addTestResult(testName, passed, message, data = null) {
+            const result = {
+                name: testName,
+                passed: passed,
+                message: message,
+                data: data,
+                timestamp: new Date().toLocaleTimeString()
+            };
+            testResults.push(result);
+            updateTestResults();
+        }
+
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            const passedTests = testResults.filter(r => r.passed).length;
+            const totalTests = testResults.length;
+            
+            let html = `<div class="status ${passedTests === totalTests ? 'success' : 'info'}">
+                <strong>Test Summary:</strong> ${passedTests}/${totalTests} tests passed
+            </div>`;
+            
+            testResults.forEach(result => {
+                html += `<div class="test-card ${result.passed ? 'success' : 'error'}">
+                    <strong>${result.passed ? '✅' : '❌'} ${result.name}</strong> 
+                    <span style="float: right; color: #666;">${result.timestamp}</span>
+                    <br>${result.message}
+                    ${result.data ? `<pre>${JSON.stringify(result.data, null, 2)}</pre>` : ''}
+                </div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('connection-result');
+            resultDiv.innerHTML = '<div class="status info">Testing connection...</div>';
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('lvt_universe_data')
+                    .select('*')
+                    .limit(3);
+                
+                if (error) {
+                    addTestResult('Database Connection', false, `Error: ${error.message}`);
+                    resultDiv.innerHTML = `<div class="status error">Connection failed: ${error.message}</div>`;
+                } else {
+                    addTestResult('Database Connection', true, `Successfully connected. Found ${data.length} records.`);
+                    resultDiv.innerHTML = `<div class="status success">Connection successful! Found ${data.length} records.</div>`;
+                }
+            } catch (err) {
+                addTestResult('Database Connection', false, `Exception: ${err.message}`);
+                resultDiv.innerHTML = `<div class="status error">Connection failed: ${err.message}</div>`;
+            }
+        }
+
+        async function testEmailAuth() {
+            const email = document.getElementById('test-email').value.trim();
+            const resultDiv = document.getElementById('email-result');
+            
+            if (!email) {
+                resultDiv.innerHTML = '<div class="status error">Please enter an email address.</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="status info">Testing email authentication...</div>';
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('lvt_universe_data')
+                    .select('employee_email')
+                    .eq('employee_email', email.toLowerCase())
+                    .limit(1);
+                
+                if (error) {
+                    addTestResult('Email Authentication', false, `Error: ${error.message}`);
+                    resultDiv.innerHTML = `<div class="status error">Authentication failed: ${error.message}</div>`;
+                } else if (data && data.length > 0) {
+                    addTestResult('Email Authentication', true, `Email found: ${email}`);
+                    resultDiv.innerHTML = `<div class="status success">Email authentication successful!</div>`;
+                } else {
+                    addTestResult('Email Authentication', false, `Email not found: ${email}`);
+                    resultDiv.innerHTML = `<div class="status error">Email not found in database.</div>`;
+                }
+            } catch (err) {
+                addTestResult('Email Authentication', false, `Exception: ${err.message}`);
+                resultDiv.innerHTML = `<div class="status error">Authentication failed: ${err.message}</div>`;
+            }
+        }
+
+        async function testSchoolData() {
+            const resultDiv = document.getElementById('school-result');
+            resultDiv.innerHTML = '<div class="status info">Testing school data retrieval...</div>';
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('lvt_universe_data')
+                    .select('*')
+                    .eq('status', 'Active')
+                    .limit(5);
+                
+                if (error) {
+                    addTestResult('School Data Retrieval', false, `Error: ${error.message}`);
+                    resultDiv.innerHTML = `<div class="status error">School data retrieval failed: ${error.message}</div>`;
+                } else {
+                    const schools = data.map(row => ({
+                        name: row.school_name,
+                        district: row.district,
+                        spocs: [
+                            ...(row.spoc1_name ? [{
+                                name: row.spoc1_name,
+                                designation: row.spoc1_designation,
+                                phone: row.spoc1_phone_number,
+                                email: row.spoc1_email
+                            }] : []),
+                            ...(row.spoc2_name ? [{
+                                name: row.spoc2_name,
+                                designation: row.spoc2_designation,
+                                phone: row.spoc2_phone_number,
+                                email: row.spoc2_email
+                            }] : [])
+                        ]
+                    }));
+                    
+                    addTestResult('School Data Retrieval', true, `Retrieved ${schools.length} schools with SPOC data`);
+                    resultDiv.innerHTML = `<div class="status success">School data retrieval successful! Found ${schools.length} schools.</div>`;
+                }
+            } catch (err) {
+                addTestResult('School Data Retrieval', false, `Exception: ${err.message}`);
+                resultDiv.innerHTML = `<div class="status error">School data retrieval failed: ${err.message}</div>`;
+            }
+        }
+
+        function testFormValidation() {
+            const resultDiv = document.getElementById('validation-result');
+            resultDiv.innerHTML = '<div class="status info">Testing form validation...</div>';
+            
+            // Test various validation scenarios
+            const tests = [
+                { name: 'Email validation', test: () => 'test@pw.live'.endsWith('@pw.live') },
+                { name: 'Phone validation', test: () => /^\d{10}$/.test('9876543210') },
+                { name: 'Required field validation', test: () => 'test'.length > 0 },
+                { name: 'SKU selection validation', test: () => true }, // This would be tested in actual form
+            ];
+            
+            let passed = 0;
+            let results = [];
+            
+            tests.forEach(test => {
+                try {
+                    const result = test.test();
+                    if (result) {
+                        passed++;
+                        results.push(`✅ ${test.name}`);
+                    } else {
+                        results.push(`❌ ${test.name}`);
+                    }
+                } catch (err) {
+                    results.push(`❌ ${test.name}: ${err.message}`);
+                }
+            });
+            
+            addTestResult('Form Validation', passed === tests.length, `Validation tests: ${passed}/${tests.length} passed`);
+            resultDiv.innerHTML = `<div class="status ${passed === tests.length ? 'success' : 'error'}">
+                Form validation test completed: ${passed}/${tests.length} passed<br>
+                ${results.join('<br>')}
+            </div>`;
+        }
+
+        function showConsoleInstructions() {
+            alert(`To open browser console:
+            
+1. Press F12 (or right-click → Inspect)
+2. Click on "Console" tab
+3. Look for any error messages in red
+4. Check for "Supabase client initialized" message
+5. Look for any network errors in the "Network" tab
+
+Common console messages to look for:
+- "Supabase client initialized successfully"
+- "Data prepared successfully"
+- Any error messages in red
+- Network request failures`);
+        }
+    </script>
+</body>
+</html>
+

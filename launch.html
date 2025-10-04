@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Visit Tracker - Launch Page</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 600px;
+        }
+        h1 { color: #333; margin-bottom: 30px; }
+        .server-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        .status { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .instructions { text-align: left; margin: 20px 0; }
+        .instructions ol { padding-left: 20px; }
+        .instructions li { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Live Visit Tracker</h1>
+        
+        <div class="server-info">
+            <h3>Server Status</h3>
+            <div id="status" class="status">Checking server status...</div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Start the Server:</h3>
+            <ol>
+                <li><strong>Option 1 - Python Server:</strong><br>
+                    Open Command Prompt in this folder and run:<br>
+                    <code>python -m http.server 8000</code>
+                </li>
+                <li><strong>Option 2 - Node.js Server:</strong><br>
+                    Open Command Prompt in this folder and run:<br>
+                    <code>npx live-server --port=3000 --cors</code>
+                </li>
+                <li><strong>Option 3 - Direct File:</strong><br>
+                    Right-click on <code>index.html</code> and select "Open with" → "Web Browser"
+                </li>
+            </ol>
+        </div>
+
+        <div>
+            <a href="index.html" class="btn btn-success">Open Main App</a>
+            <a href="test-simple.html" class="btn">Test Connection</a>
+            <a href="test-data-flow.html" class="btn">Test Data Flow</a>
+        </div>
+
+        <div class="server-info">
+            <h3>Access URLs:</h3>
+            <p><strong>Main App:</strong> <a href="index.html">index.html</a></p>
+            <p><strong>If using Python server:</strong> <a href="http://localhost:8000">http://localhost:8000</a></p>
+            <p><strong>If using Node.js server:</strong> <a href="http://localhost:3000">http://localhost:3000</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Check if we can access the main app
+        function checkServerStatus() {
+            const statusDiv = document.getElementById('status');
+            
+            // Try to fetch the main app
+            fetch('index.html')
+                .then(response => {
+                    if (response.ok) {
+                        statusDiv.className = 'status success';
+                        statusDiv.textContent = '✅ Server is running! You can access the app.';
+                    } else {
+                        throw new Error('Server not responding');
+                    }
+                })
+                .catch(error => {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = '❌ Server not running. Please start a server using one of the methods above.';
+                });
+        }
+
+        // Check status when page loads
+        checkServerStatus();
+        
+        // Check status every 5 seconds
+        setInterval(checkServerStatus, 5000);
+    </script>
+</body>
+</html>
+

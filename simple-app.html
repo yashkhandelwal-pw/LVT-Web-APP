@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Visit Tracker - Simple Version</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        .hidden { display: none; }
+        .form-input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin: 10px 0; }
+        .btn { padding: 15px 30px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .btn:hover { background: #0056b3; }
+        .message { padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold text-center mb-6">Live Visit Tracker</h1>
+        
+        <!-- Login View -->
+        <div id="login-view">
+            <div id="message-area" class="mb-4"></div>
+            <input type="email" id="email" placeholder="Enter your @pw.live email" class="form-input">
+            <button onclick="testLogin()" class="btn w-full">Test Login</button>
+        </div>
+
+        <!-- Form View -->
+        <div id="form-view" class="hidden">
+            <h2 class="text-xl font-bold mb-4">Visit Form</h2>
+            <div id="form-content">
+                <p>Form loaded successfully!</p>
+                <p id="user-info"></p>
+                <p id="schools-info"></p>
+                <button onclick="goBack()" class="btn">Back to Login</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const SUPABASE_URL = 'https://kfkcohosbpaeuzxuohrm.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtma2NvaG9zYnBhZXV6eHVvaHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyMDgyODgsImV4cCI6MjA2OTc4NDI4OH0.0f5ux3Z1B2Y8acpn7ZC40HiLeW3QhZcvZkr758ySivk';
+        
+        let supabaseClient;
+
+        // Initialize when page loads
+        window.addEventListener('load', async function() {
+            console.log('Page loaded, initializing...');
+            try {
+                // Wait for supabase to load
+                while (typeof window.supabase === 'undefined') {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log('Supabase initialized successfully');
+                showMessage('App ready! Enter your email to test.', 'success');
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showMessage('Error initializing app: ' + error.message, 'error');
+            }
+        });
+
+        async function testLogin() {
+            const email = document.getElementById('email').value.trim();
+            console.log('Testing login with email:', email);
+            
+            if (!email) {
+                showMessage('Please enter an email address.', 'error');
+                return;
+            }
+
+            if (!email.endsWith('@pw.live')) {
+                showMessage('Please use a @pw.live email address.', 'error');
+                return;
+            }
+
+            showMessage('Checking email...', 'success');
+            
+            try {
+                // Check if email exists in database
+                const { data, error } = await supabaseClient
+                    .from('lvt_universe_data')
+                    .select('employee_email, school_name, district')
+                    .eq('employee_email', email.toLowerCase())
+                    .limit(5);
+                
+                if (error) {
+                    console.error('Database error:', error);
+                    showMessage('Database error: ' + error.message, 'error');
+                    return;
+                }
+                
+                if (!data || data.length === 0) {
+                    showMessage('Email not found in database. Please check your email or contact administrator.', 'error');
+                    return;
+                }
+                
+                console.log('Email found, data:', data);
+                
+                // Show form
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('form-view').classList.remove('hidden');
+                
+                // Display user info
+                document.getElementById('user-info').textContent = `Welcome: ${email}`;
+                document.getElementById('schools-info').textContent = `Found ${data.length} schools for this user.`;
+                
+                showMessage('Login successful! Form loaded.', 'success');
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('Login failed: ' + error.message, 'error');
+            }
+        }
+
+        function goBack() {
+            document.getElementById('form-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('email').value = '';
+            showMessage('Please enter your email to login.', 'success');
+        }
+
+        function showMessage(text, type) {
+            const messageArea = document.getElementById('message-area');
+            messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+    </script>
+</body>
+</html>
+
