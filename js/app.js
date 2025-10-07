@@ -13,26 +13,44 @@ class LiveVisitTracker {
 
     initialize() {
         this.setupEventListeners();
+        this.createCanvasIfNeeded();
         console.log('Live Visit Tracker initialized');
     }
 
+    createCanvasIfNeeded() {
+        let canvas = document.getElementById('image-canvas');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'image-canvas';
+            canvas.style.display = 'none';
+            document.body.appendChild(canvas);
+        }
+    }
+
     setupEventListeners() {
-        // Image capture
+        // Image capture with enhanced mobile support
         const imageInput = document.getElementById('image-capture-input');
         const imageCaptureBox = document.getElementById('image-capture-box');
-        imageCaptureBox.addEventListener('click', () => imageInput.click());
         
-        imageInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                // Call the compressImage function from app.html
-                if (typeof window.compressImage === 'function') {
-                    window.compressImage(file);
-                } else {
-                    console.error('compressImage function not found');
+        // Ensure input has proper mobile camera attributes
+        if (imageInput) {
+            imageInput.setAttribute('accept', 'image/*');
+            imageInput.setAttribute('capture', 'environment');
+            imageInput.setAttribute('multiple', 'false');
+        }
+        
+        if (imageCaptureBox && imageInput) {
+            imageCaptureBox.addEventListener('click', () => {
+                imageInput.click();
+            });
+            
+            imageInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    this.handleImageFile(file);
                 }
-            }
-        });
+            });
+        }
 
         // School dropdown
         const schoolDropdownContainer = document.getElementById('school-dropdown-container');
@@ -40,65 +58,135 @@ class LiveVisitTracker {
         const schoolOptionsPanel = document.getElementById('school-options-panel');
         const schoolSearchInput = document.getElementById('school-search-input');
         
-        schoolSelectButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            schoolOptionsPanel.classList.toggle('hidden');
-            if (!schoolOptionsPanel.classList.contains('hidden')) {
-                schoolSearchInput.value = '';
-                this.renderSchoolOptions();
-                schoolSearchInput.focus();
-            }
-        });
-        
-        schoolSearchInput.addEventListener('input', () => {
-            this.renderSchoolOptions(schoolSearchInput.value.toLowerCase());
-        });
-        
-        document.addEventListener('click', (e) => {
-            if (!schoolDropdownContainer.contains(e.target)) {
-                schoolOptionsPanel.classList.add('hidden');
-            }
-        });
+        if (schoolSelectButton && schoolOptionsPanel && schoolSearchInput) {
+            schoolSelectButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                schoolOptionsPanel.classList.toggle('hidden');
+                if (!schoolOptionsPanel.classList.contains('hidden')) {
+                    schoolSearchInput.value = '';
+                    this.renderSchoolOptions();
+                    schoolSearchInput.focus();
+                }
+            });
+            
+            schoolSearchInput.addEventListener('input', () => {
+                this.renderSchoolOptions(schoolSearchInput.value.toLowerCase());
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (schoolDropdownContainer && !schoolDropdownContainer.contains(e.target)) {
+                    schoolOptionsPanel.classList.add('hidden');
+                }
+            });
+        }
+    }
+
+    handleImageFile(file) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            this.showMessage('Please select a valid image file.', 'error', 'login');
+            return;
+        }
+
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            this.showMessage('Image file is too large. Please select an image smaller than 10MB.', 'error', 'login');
+            return;
+        }
+
+        // Show loading indicator
+        const imagePlaceholder = document.getElementById('image-placeholder');
+        if (imagePlaceholder) {
+            imagePlaceholder.innerHTML = '<div class="text-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div><p class="mt-2 text-sm text-gray-500">Processing image...</p></div>';
+        }
+
+        // Process the image
+        this.compressImage(file);
     }
 
     // UI Helper Functions
     showLoader() {
-        document.getElementById('loader').classList.remove('hidden');
+        const loader = document.getElementById('loader');
+        if (loader) loader.classList.remove('hidden');
     }
 
     hideLoader() {
-        document.getElementById('loader').classList.add('hidden');
+        const loader = document.getElementById('loader');
+        if (loader) loader.classList.add('hidden');
     }
 
     showMessage(text, type, view = 'login') {
         const msgArea = document.getElementById(`message-area-${view}`);
-        msgArea.innerHTML = `<div class="message ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${text}</div>`;
+        if (msgArea) {
+            msgArea.innerHTML = `<div class="message ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'} p-3 rounded-md">${text}</div>`;
+        }
     }
 
     clearMessages() {
-        document.getElementById('message-area-login').innerHTML = '';
+        const loginMsg = document.getElementById('message-area-login');
+        if (loginMsg) loginMsg.innerHTML = '';
     }
 
     goBack() {
-        document.getElementById('form-view').classList.add('hidden');
-        document.getElementById('login-view').classList.remove('hidden');
-        document.getElementById('visit-form').reset();
+        const formView = document.getElementById('form-view');
+        const loginView = document.getElementById('login-view');
+        const visitForm = document.getElementById('visit-form');
+        
+        if (formView) formView.classList.add('hidden');
+        if (loginView) loginView.classList.remove('hidden');
+        if (visitForm) visitForm.reset();
+        
         this.clearAllErrorMessages();
-        document.getElementById('image-preview').classList.add('hidden');
-        document.getElementById('image-placeholder').classList.remove('hidden');
-        document.getElementById('new-spoc-fields').classList.add('hidden');
-        document.getElementById('sku-section').classList.add('hidden');
-        document.getElementById('sku-container').innerHTML = '';
-        document.getElementById('school-selected-text').textContent = 'Select School';
-        document.getElementById('school-selected-text').classList.add('text-gray-500');
-        document.getElementById('school').value = '';
-        document.getElementById('school-options-panel').classList.add('hidden');
-        document.getElementById('district-filter-container').classList.add('hidden');
+        this.resetImageCapture();
+        this.resetFormElements();
+        
         this.imageBase64 = null;
         this.currentSchoolDetails = { district: '', state: '' };
     }
 
-    // Image Compression
+    resetImageCapture() {
+        const imagePreview = document.getElementById('image-preview');
+        const imagePlaceholder = document.getElementById('image-placeholder');
+        
+        if (imagePreview) imagePreview.classList.add('hidden');
+        if (imagePlaceholder) {
+            imagePlaceholder.classList.remove('hidden');
+            imagePlaceholder.innerHTML = '<div class="text-center p-8"><svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg><p class="mt-2 text-sm text-gray-500">Click to capture image</p></div>';
+        }
+    }
+
+    resetFormElements() {
+        const elements = [
+            'new-spoc-fields',
+            'sku-section', 
+            'sku-container',
+            'school-options-panel',
+            'district-filter-container'
+        ];
+        
+        elements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (id === 'sku-container') {
+                    el.innerHTML = '';
+                } else {
+                    el.classList.add('hidden');
+                }
+            }
+        });
+
+        const schoolSelectedText = document.getElementById('school-selected-text');
+        if (schoolSelectedText) {
+            schoolSelectedText.textContent = 'Select School';
+            schoolSelectedText.classList.add('text-gray-500');
+        }
+
+        const schoolInput = document.getElementById('school');
+        if (schoolInput) schoolInput.value = '';
+    }
+
+    // Enhanced Image Compression with better error handling
     compressImage(file) {
         const MAX_WIDTH = CONFIG.APP.IMAGE_COMPRESSION.MAX_WIDTH;
         const MAX_HEIGHT = CONFIG.APP.IMAGE_COMPRESSION.MAX_HEIGHT;
@@ -108,46 +196,97 @@ class LiveVisitTracker {
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                let width = img.width;
-                let height = img.height;
+                try {
+                    let width = img.width;
+                    let height = img.height;
 
-                // Calculate new dimensions while maintaining aspect ratio
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
+                    // Calculate new dimensions while maintaining aspect ratio
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
                     }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
+
+                    // Ensure canvas exists
+                    this.createCanvasIfNeeded();
+                    const canvas = document.getElementById('image-canvas');
+                    
+                    if (!canvas) {
+                        throw new Error('Canvas element could not be created');
                     }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    if (!ctx) {
+                        throw new Error('Could not get canvas context');
+                    }
+
+                    // Handle image orientation for mobile photos
+                    ctx.save();
+                    ctx.drawImage(img, 0, 0, width, height);
+                    ctx.restore();
+
+                    // Get the compressed image data as a Base64 string
+                    this.imageBase64 = canvas.toDataURL('image/jpeg', QUALITY);
+
+                    // Update the UI
+                    this.updateImagePreview();
+                    this.clearAllErrorMessages();
+
+                } catch (error) {
+                    console.error('Error compressing image:', error);
+                    this.showMessage('Error processing image. Please try again.', 'error', 'login');
+                    this.resetImageCapture();
                 }
-
-                const canvas = document.getElementById('image-canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Get the compressed image data as a Base64 string
-                this.imageBase64 = canvas.toDataURL('image/jpeg', QUALITY);
-
-                // Update the UI
-                document.getElementById('image-preview').src = this.imageBase64;
-                document.getElementById('image-preview').classList.remove('hidden');
-                document.getElementById('image-placeholder').classList.add('hidden');
-                this.clearAllErrorMessages();
             };
+            
+            img.onerror = () => {
+                console.error('Error loading image');
+                this.showMessage('Error loading image. Please try a different image.', 'error', 'login');
+                this.resetImageCapture();
+            };
+            
             img.src = e.target.result;
         };
+        
+        reader.onerror = () => {
+            console.error('Error reading file');
+            this.showMessage('Error reading file. Please try again.', 'error', 'login');
+            this.resetImageCapture();
+        };
+        
         reader.readAsDataURL(file);
+    }
+
+    updateImagePreview() {
+        const imagePreview = document.getElementById('image-preview');
+        const imagePlaceholder = document.getElementById('image-placeholder');
+        
+        if (imagePreview && this.imageBase64) {
+            imagePreview.src = this.imageBase64;
+            imagePreview.classList.remove('hidden');
+        }
+        
+        if (imagePlaceholder) {
+            imagePlaceholder.classList.add('hidden');
+        }
     }
 
     // Data Fetching
     async fetchDetails() {
         this.clearMessages();
-        const email = document.getElementById('email').value.trim().toLowerCase();
+        const emailInput = document.getElementById('email');
+        if (!emailInput) return;
+        
+        const email = emailInput.value.trim().toLowerCase();
         
         if (!email) {
             this.showMessage('Please enter your email address.', 'error', 'login');
@@ -180,8 +319,25 @@ class LiveVisitTracker {
                         this.locationCoords.longitude = position.coords.longitude;
                         resolve();
                     },
-                    () => {
-                        reject(new Error('Location access is required. Please allow location access.'));
+                    (error) => {
+                        let errorMessage = 'Location access is required. Please allow location access.';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = 'Location information is unavailable. Please try again.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = 'Location request timed out. Please try again.';
+                                break;
+                        }
+                        reject(new Error(errorMessage));
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
                     }
                 );
             } else {
@@ -257,7 +413,6 @@ class LiveVisitTracker {
         }
     }
 
-
     onDataFetched(data) {
         this.hideLoader();
         if (data.error) {
@@ -266,23 +421,28 @@ class LiveVisitTracker {
         }
 
         // Adaptive UI Logic
-        if (data.isManager) {
-            document.getElementById('district-filter-container').classList.remove('hidden');
+        const districtFilterContainer = document.getElementById('district-filter-container');
+        if (data.isManager && districtFilterContainer) {
+            districtFilterContainer.classList.remove('hidden');
             this.populateDropdown('district', data.districts, 'Select District to Load Schools');
-        } else {
-            document.getElementById('district-filter-container').classList.add('hidden');
+        } else if (districtFilterContainer) {
+            districtFilterContainer.classList.add('hidden');
             this.renderSchoolOptions();
         }
 
         this.populateDropdown('co-visitor1', data.coVisitors, 'No Co-Visitor 1');
         this.populateDropdown('co-visitor2', data.coVisitors, 'No Co-Visitor 2');
         
-        document.getElementById('login-view').classList.add('hidden');
-        document.getElementById('form-view').classList.remove('hidden');
+        const loginView = document.getElementById('login-view');
+        const formView = document.getElementById('form-view');
+        if (loginView) loginView.classList.add('hidden');
+        if (formView) formView.classList.remove('hidden');
     }
 
     populateDropdown(elementId, options, defaultOption) {
         const select = document.getElementById(elementId);
+        if (!select || !options) return;
+        
         select.innerHTML = `<option value="">${defaultOption}</option>`;
         options.forEach(option => {
             const opt = document.createElement('option');
@@ -301,7 +461,10 @@ class LiveVisitTracker {
 
     // District and School Management
     async handleDistrictChange() {
-        const selectedDistrict = document.getElementById('district').value;
+        const districtSelect = document.getElementById('district');
+        if (!districtSelect) return;
+        
+        const selectedDistrict = districtSelect.value;
         this.cachedData.schools = [];
         this.renderSchoolOptions();
         this.resetSchoolSelection();
@@ -327,6 +490,8 @@ class LiveVisitTracker {
 
     renderSchoolOptions(filter = '') {
         const optionsList = document.getElementById('school-options-list');
+        if (!optionsList) return;
+        
         optionsList.innerHTML = '';
         
         if (!this.cachedData || !this.cachedData.schools) return;
@@ -349,11 +514,16 @@ class LiveVisitTracker {
     }
 
     selectSchool(schoolObject) {
-        document.getElementById('school').value = schoolObject.name;
+        const schoolInput = document.getElementById('school');
         const selectedText = document.getElementById('school-selected-text');
-        selectedText.textContent = schoolObject.name;
-        selectedText.classList.remove('text-gray-500');
-        document.getElementById('school-options-panel').classList.add('hidden');
+        const optionsPanel = document.getElementById('school-options-panel');
+        
+        if (schoolInput) schoolInput.value = schoolObject.name;
+        if (selectedText) {
+            selectedText.textContent = schoolObject.name;
+            selectedText.classList.remove('text-gray-500');
+        }
+        if (optionsPanel) optionsPanel.classList.add('hidden');
         
         this.currentSchoolDetails = { 
             district: schoolObject.district, 
@@ -365,6 +535,8 @@ class LiveVisitTracker {
 
     populateSpocOptions(spocs) {
         const spocSelect = document.getElementById('spoc');
+        if (!spocSelect) return;
+        
         spocSelect.innerHTML = '<option value="">Select SPOC</option>';
         
         spocs.forEach(spoc => {
@@ -378,24 +550,39 @@ class LiveVisitTracker {
     }
 
     resetSchoolSelection() {
-        document.getElementById('school').value = '';
+        const schoolInput = document.getElementById('school');
         const selectedText = document.getElementById('school-selected-text');
-        selectedText.textContent = 'Select School';
-        selectedText.classList.add('text-gray-500');
-        document.getElementById('spoc').innerHTML = '';
+        const spocSelect = document.getElementById('spoc');
+        
+        if (schoolInput) schoolInput.value = '';
+        if (selectedText) {
+            selectedText.textContent = 'Select School';
+            selectedText.classList.add('text-gray-500');
+        }
+        if (spocSelect) spocSelect.innerHTML = '';
+        
         this.currentSchoolDetails = { district: '', state: '' };
     }
 
     // SKU and SPOC Field Toggling
     toggleNewSpocFields() {
-        const spocSelection = document.getElementById('spoc').value;
-        document.getElementById('new-spoc-fields').classList.toggle('hidden', spocSelection !== 'AddNewSpoc');
+        const spocSelect = document.getElementById('spoc');
+        const newSpocFields = document.getElementById('new-spoc-fields');
+        
+        if (spocSelect && newSpocFields) {
+            const spocSelection = spocSelect.value;
+            newSpocFields.classList.toggle('hidden', spocSelection !== 'AddNewSpoc');
+        }
     }
 
     toggleSkuSection() {
-        const outcome = document.getElementById('meeting-outcome').value;
+        const outcomeSelect = document.getElementById('meeting-outcome');
         const skuSection = document.getElementById('sku-section');
         const skuContainer = document.getElementById('sku-container');
+        
+        if (!outcomeSelect || !skuSection || !skuContainer) return;
+        
+        const outcome = outcomeSelect.value;
         
         if (outcome === 'Sample Submission Test Prep') {
             skuSection.classList.remove('hidden');
@@ -410,13 +597,15 @@ class LiveVisitTracker {
 
     addSkuBlock() {
         const skuContainer = document.getElementById('sku-container');
+        if (!skuContainer || !this.cachedData || !this.cachedData.skuData) return;
+        
         const blockId = 'sku-block-' + Date.now();
         const block = document.createElement('div');
         block.id = blockId;
         block.className = 'space-y-2 p-3 border border-gray-100 rounded-md';
         
         const categorySelect = document.createElement('select');
-        categorySelect.className = 'form-select';
+        categorySelect.className = 'form-select w-full p-2 border border-gray-300 rounded-md';
         categorySelect.onchange = () => this.populateSkusForCategory(blockId, categorySelect.value);
         
         let optionsHtml = '<option value="">-- Select Category --</option>';
@@ -436,31 +625,33 @@ class LiveVisitTracker {
 
     populateSkusForCategory(blockId, category) {
         const block = document.getElementById(blockId);
+        if (!block || !category || !this.cachedData || !this.cachedData.skuData[category]) return;
+        
         const skuListDiv = block.querySelector('div');
+        if (!skuListDiv) return;
+        
         skuListDiv.innerHTML = '';
         
-        if (category && this.cachedData.skuData[category]) {
-            this.cachedData.skuData[category].forEach(skuName => {
-                const checkboxId = 'sku-' + skuName.replace(/\s+/g, '-') + '-' + Date.now();
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'flex items-center';
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = checkboxId;
-                checkbox.value = skuName;
-                checkbox.className = 'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500';
-                
-                const label = document.createElement('label');
-                label.htmlFor = checkboxId;
-                label.textContent = skuName;
-                label.className = 'ml-3 block text-sm text-gray-700';
-                
-                itemDiv.appendChild(checkbox);
-                itemDiv.appendChild(label);
-                skuListDiv.appendChild(itemDiv);
-            });
-        }
+        this.cachedData.skuData[category].forEach(skuName => {
+            const checkboxId = 'sku-' + skuName.replace(/\s+/g, '-') + '-' + Date.now();
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'flex items-center';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = checkboxId;
+            checkbox.value = skuName;
+            checkbox.className = 'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500';
+            
+            const label = document.createElement('label');
+            label.htmlFor = checkboxId;
+            label.textContent = skuName;
+            label.className = 'ml-3 block text-sm text-gray-700';
+            
+            itemDiv.appendChild(checkbox);
+            itemDiv.appendChild(label);
+            skuListDiv.appendChild(itemDiv);
+        });
     }
 
     // Validation and Submission
@@ -495,16 +686,22 @@ class LiveVisitTracker {
         };
 
         // Validation
-        if (this.cachedData.isManager) {
-            validateField('district', !document.getElementById('district').value, 'Please select a district.');
+        if (this.cachedData && this.cachedData.isManager) {
+            const districtSelect = document.getElementById('district');
+            validateField('district', !districtSelect || !districtSelect.value, 'Please select a district.');
         }
-        validateField('school-select-button', !document.getElementById('school').value, 'Please select a school.');
         
-        const meetingOutcome = document.getElementById('meeting-outcome').value;
+        const schoolInput = document.getElementById('school');
+        validateField('school-select-button', !schoolInput || !schoolInput.value, 'Please select a school.');
+        
+        const outcomeSelect = document.getElementById('meeting-outcome');
+        const meetingOutcome = outcomeSelect ? outcomeSelect.value : '';
         validateField('meeting-outcome', !meetingOutcome, 'Please select a meeting outcome.');
-        validateField('spoc', !document.getElementById('spoc').value, 'Please select or add a SPOC.');
+        
+        const spocSelect = document.getElementById('spoc');
+        validateField('spoc', !spocSelect || !spocSelect.value, 'Please select or add a SPOC.');
+        
         console.log('Image validation - this.imageBase64:', this.imageBase64);
-        console.log('Image validation - window.imageBase64:', window.imageBase64);
         validateField('image-capture-box', !this.imageBase64, 'Please capture an image.');
         
         let selectedSkus = '';
@@ -514,12 +711,18 @@ class LiveVisitTracker {
             selectedSkus = Array.from(checkedSkus).map(cb => cb.value).join(' // ');
         }
         
-        const spocSelection = document.getElementById('spoc').value;
+        const spocSelection = spocSelect ? spocSelect.value : '';
         if (spocSelection === 'AddNewSpoc') {
-            validateField('new-spoc-designation', !document.getElementById('new-spoc-designation').value, 'Designation is required.');
-            validateField('new-spoc-name', !document.getElementById('new-spoc-name').value, 'Name is required.');
-            validateField('new-spoc-contact', !/^\d{10}$/.test(document.getElementById('new-spoc-contact').value), 'Contact must be 10 digits.');
-            const newSpocEmail = document.getElementById('new-spoc-email').value;
+            const designationInput = document.getElementById('new-spoc-designation');
+            const nameInput = document.getElementById('new-spoc-name');
+            const contactInput = document.getElementById('new-spoc-contact');
+            const emailInput = document.getElementById('new-spoc-email');
+            
+            validateField('new-spoc-designation', !designationInput || !designationInput.value, 'Designation is required.');
+            validateField('new-spoc-name', !nameInput || !nameInput.value, 'Name is required.');
+            validateField('new-spoc-contact', !contactInput || !/^\d{10}$/.test(contactInput.value), 'Contact must be 10 digits.');
+            
+            const newSpocEmail = emailInput ? emailInput.value : '';
             validateField('new-spoc-email', newSpocEmail && !newSpocEmail.includes('@'), 'Please enter a valid email.');
         }
 
@@ -530,9 +733,15 @@ class LiveVisitTracker {
             return;
         }
 
+        // Get form values safely
+        const getElementValue = (id) => {
+            const element = document.getElementById(id);
+            return element ? element.value : '';
+        };
+
         // Prepare form data
         const formData = {
-            submissionId: 'K8LVT' + (Math.floor(Math.random() * 90000) + 10000), // K8LVT format
+            submissionId: 'K25LVT' + (Math.floor(Math.random() * 90000) + 10000),
             userEmail: this.cachedData.userEmail,
             rmEmail: this.cachedData.rmEmail,
             zmEmail: this.cachedData.zmEmail,
@@ -540,19 +749,19 @@ class LiveVisitTracker {
             district: this.currentSchoolDetails.district,
             latitude: this.locationCoords.latitude,
             longitude: this.locationCoords.longitude,
-            school: document.getElementById('school').value,
+            school: getElementValue('school'),
             meetingOutcome: meetingOutcome,
             selectedSkus: selectedSkus,
             spocSelection: spocSelection,
-            newSpocDesignation: document.getElementById('new-spoc-designation').value,
-            newSpocName: document.getElementById('new-spoc-name').value,
-            newSpocContact: document.getElementById('new-spoc-contact').value,
-            newSpocEmail: document.getElementById('new-spoc-email').value,
-            coVisitor1: document.getElementById('co-visitor1').value,
-            coVisitor2: document.getElementById('co-visitor2').value,
-            remarks: document.getElementById('remarks').value,
+            newSpocDesignation: getElementValue('new-spoc-designation'),
+            newSpocName: getElementValue('new-spoc-name'),
+            newSpocContact: getElementValue('new-spoc-contact'),
+            newSpocEmail: getElementValue('new-spoc-email'),
+            coVisitor1: getElementValue('co-visitor1'),
+            coVisitor2: getElementValue('co-visitor2'),
+            remarks: getElementValue('remarks'),
             imageBase64: this.imageBase64,
-            followUpDate: document.getElementById('follow-up-date').value
+            followUpDate: getElementValue('follow-up-date')
         };
 
         this.showLoader();
@@ -562,6 +771,7 @@ class LiveVisitTracker {
             await this.processSubmission(formData);
         } catch (error) {
             this.hideLoader();
+            this.submissionInProgress = false;
             this.showMessage('Submission failed: ' + error.message, 'error', 'login');
         }
     }
@@ -570,6 +780,7 @@ class LiveVisitTracker {
         try {
             console.log('Google Sheets service available:', !!window.googleSheetsService);
             console.log('Supabase client available:', !!window.supabaseClient);
+            
             // Generate unique ID
             const submissionId = await this.generateSubmissionId();
             
@@ -613,6 +824,7 @@ class LiveVisitTracker {
                     }
                     imageUrl = await window.googleSheetsService.uploadImageToDrive(formData.imageBase64, submissionId);
                 } catch (error) {
+                    console.error('Image upload error:', error);
                     imageUrl = "Image Processing Failed";
                 }
             }
@@ -650,16 +862,19 @@ class LiveVisitTracker {
             }
 
             // Submit to Google Sheets
-            if (!window.googleSheetsService) {
-                throw new Error('Google Sheets service not initialized. Please refresh the page and try again.');
-            }
-            const sheetsResult = await window.googleSheetsService.submitVisitToSheets(visitData);
-            if (!sheetsResult.success) {
-                console.warn('Failed to submit to Google Sheets:', sheetsResult.error);
+            if (window.googleSheetsService) {
+                try {
+                    const sheetsResult = await window.googleSheetsService.submitVisitToSheets(visitData);
+                    if (!sheetsResult.success) {
+                        console.warn('Failed to submit to Google Sheets:', sheetsResult.error);
+                    }
+                } catch (error) {
+                    console.warn('Google Sheets submission error:', error);
+                }
             }
 
             // Create calendar event if follow-up date is provided
-            if (formData.followUpDate && CONFIG.CALENDAR.SECONDARY_CALENDAR_ID !== 'PASTE_YOUR_CALENDAR_ID_HERE') {
+            if (formData.followUpDate && CONFIG.CALENDAR && CONFIG.CALENDAR.SECONDARY_CALENDAR_ID !== 'PASTE_YOUR_CALENDAR_ID_HERE') {
                 try {
                     const followUpTime = new Date(formData.followUpDate);
                     const eventData = {
@@ -669,7 +884,6 @@ class LiveVisitTracker {
                         endTime: new Date(followUpTime.getTime() + 30 * 60000).toISOString(),
                         userEmail: formData.userEmail
                     };
-                    // Calendar event creation - to be implemented if needed
                     console.log('Calendar event data:', eventData);
                 } catch (error) {
                     console.error('Could not create calendar invitation:', error);
@@ -680,11 +894,13 @@ class LiveVisitTracker {
             await this.sendConfirmationEmail(formData, submissionId, spocData.name, spocData.designation);
 
             this.hideLoader();
+            this.submissionInProgress = false;
             this.goBack();
             this.showMessage("Thank you for logging your visit! A confirmation email has been sent.", 'success', 'login');
 
         } catch (error) {
             console.error('Submission Error:', error);
+            this.submissionInProgress = false;
             throw error;
         }
     }
@@ -697,6 +913,7 @@ class LiveVisitTracker {
 
     async reverseGeocode(latitude, longitude) {
         try {
+            // Note: You'll need to replace YOUR_GOOGLE_MAPS_API_KEY with actual API key
             const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`);
             const data = await response.json();
             if (data.results && data.results[0]) {
@@ -715,7 +932,6 @@ class LiveVisitTracker {
                 subject: `Visit Confirmation: ${formData.school} - ${submissionId}`,
                 htmlBody: this.generateEmailTemplate(formData, submissionId, spocName, spocDesignation)
             };
-            // Email sending - to be implemented if needed
             console.log('Email data:', emailData);
         } catch (error) {
             console.error('Error sending confirmation email:', error);
@@ -748,31 +964,45 @@ class LiveVisitTracker {
 
 // Global functions for HTML onclick handlers
 function fetchDetails() {
-    window.liveVisitTracker.fetchDetails();
+    if (window.liveVisitTracker) {
+        window.liveVisitTracker.fetchDetails();
+    }
 }
 
 function goBack() {
-    window.liveVisitTracker.goBack();
+    if (window.liveVisitTracker) {
+        window.liveVisitTracker.goBack();
+    }
 }
 
 function handleDistrictChange() {
-    window.liveVisitTracker.handleDistrictChange();
+    if (window.liveVisitTracker) {
+        window.liveVisitTracker.handleDistrictChange();
+    }
 }
 
 function toggleNewSpocFields() {
-    window.liveVisitTracker.toggleNewSpocFields();
+    if (window.liveVisitTracker) {
+        window.liveVisitTracker.toggleNewSpocFields();
+    }
 }
 
 function toggleSkuSection() {
-    window.liveVisitTracker.toggleSkuSection();
+    if (window.liveVisitTracker) {
+        window.liveVisitTracker.toggleSkuSection();
+    }
 }
 
 function addSkuBlock() {
-    window.liveVisitTracker.addSkuBlock();
+    if (window.liveVisitTracker) {
+        window.liveVisitTracker.addSkuBlock();
+    }
 }
 
 function submitForm() {
-    window.liveVisitTracker.submitForm();
+    if (window.liveVisitTracker) {
+        window.liveVisitTracker.submitForm();
+    }
 }
 
 // Initialize the application
