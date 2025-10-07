@@ -8,13 +8,9 @@
     <link rel="stylesheet" as="style" onload="this.rel='stylesheet'" href="https://fonts.googleapis.com/css2?display=swap&family=Public+Sans:wght@400;500;700;900&display=swap" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- Google Identity Services MUST load first -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js"></script>
-    <script>
-        // Initialize Supabase immediately when script loads
-        window.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing Supabase...');
-        });
-    </script>
     <style>
         .hidden { display: none; }
         .form-label { font-weight: 500; color: #111418; margin-bottom: 8px; display: block; }
@@ -223,6 +219,7 @@
         </div>
     </div>
 
+    <!-- Load scripts in correct order -->
     <script src="js/config.js"></script>
     <script src="js/supabase-client.js"></script>
     <script src="js/google-sheets.js"></script>
